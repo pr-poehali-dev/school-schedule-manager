@@ -656,55 +656,6 @@ export default function Index() {
                                           variant="ghost"
                                           size="sm"
                                           className="h-7 w-7 p-0"
-                                          onClick={() => {
-                                            setDuplicatingLesson(lesson);
-                                            setTargetDay('');
-                                          }}
-                                        >
-                                          <Icon name="Copy" size={14} />
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent>
-                                        <DialogHeader>
-                                          <DialogTitle>Дублировать урок</DialogTitle>
-                                        </DialogHeader>
-                                        {duplicatingLesson && (
-                                          <div className="space-y-4">
-                                            <div className="p-3 bg-muted/50 rounded-lg">
-                                              <p className="font-medium text-sm">{duplicatingLesson.subject}</p>
-                                              <p className="text-xs text-muted-foreground mt-1">
-                                                {duplicatingLesson.time_start} - {duplicatingLesson.time_end} • {duplicatingLesson.teacher}
-                                              </p>
-                                            </div>
-                                            <div>
-                                              <Label>Выберите день недели</Label>
-                                              <Select value={targetDay} onValueChange={setTargetDay}>
-                                                <SelectTrigger>
-                                                  <SelectValue placeholder="Выберите день" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  {daysOfWeek.map((day) => (
-                                                    <SelectItem key={day.name} value={day.name}>
-                                                      {day.name} ({day.date})
-                                                    </SelectItem>
-                                                  ))}
-                                                </SelectContent>
-                                              </Select>
-                                            </div>
-                                            <Button onClick={handleDuplicateLesson} disabled={!targetDay} className="w-full">
-                                              <Icon name="Copy" size={16} className="mr-2" />
-                                              Дублировать в {targetDay || '...'}
-                                            </Button>
-                                          </div>
-                                        )}
-                                      </DialogContent>
-                                    </Dialog>
-                                    <Dialog>
-                                      <DialogTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-7 w-7 p-0"
                                           onClick={() => setEditingLesson(lesson)}
                                         >
                                           <Icon name="Edit" size={14} />
