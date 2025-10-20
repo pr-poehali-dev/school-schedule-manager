@@ -60,16 +60,31 @@ export default function Index() {
   const [newStudent, setNewStudent] = useState<Partial<Student>>({});
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [newLesson, setNewLesson] = useState<Partial<Lesson>>({});
+  const [weekStartDate, setWeekStartDate] = useState(new Date());
   const { toast } = useToast();
 
+  const formatDate = (date: Date) => {
+    const day = date.getDate();
+    const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+    const month = months[date.getMonth()];
+    return `${day} ${month}.`;
+  };
+
+  const getDayOfWeek = (dayOffset: number) => {
+    const days = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+    const date = new Date(weekStartDate);
+    date.setDate(date.getDate() + dayOffset);
+    return { name: days[date.getDay()], date: formatDate(date), fullDate: date };
+  };
+
   const daysOfWeek = [
-    'Понедельник, 20 окт.',
-    'Вторник, 21 окт.',
-    'Среда, 22 окт.',
-    'Четверг, 23 окт.',
-    'Пятница, 24 окт.',
-    'Суббота, 25 окт.',
-    'Воскресенье, 26 окт.',
+    getDayOfWeek(0),
+    getDayOfWeek(1),
+    getDayOfWeek(2),
+    getDayOfWeek(3),
+    getDayOfWeek(4),
+    getDayOfWeek(5),
+    getDayOfWeek(6),
   ];
 
   useEffect(() => {
@@ -314,21 +329,36 @@ export default function Index() {
           </TabsList>
 
           <TabsContent value="schedule" className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentWeek(Math.max(1, currentWeek - 1))}
-                  disabled={currentWeek === 1}
+                  onClick={() => {
+                    const newDate = new Date(weekStartDate);
+                    newDate.setDate(newDate.getDate() - 7);
+                    setWeekStartDate(newDate);
+                  }}
                 >
                   <Icon name="ChevronLeft" size={18} />
                 </Button>
-                <span className="font-semibold px-4">Неделя {currentWeek}</span>
+                <div className="flex items-center gap-2">
+                  <Icon name="Calendar" size={18} className="text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={weekStartDate.toISOString().split('T')[0]}
+                    onChange={(e) => setWeekStartDate(new Date(e.target.value))}
+                    className="w-auto"
+                  />
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentWeek(currentWeek + 1)}
+                  onClick={() => {
+                    const newDate = new Date(weekStartDate);
+                    newDate.setDate(newDate.getDate() + 7);
+                    setWeekStartDate(newDate);
+                  }}
                 >
                   <Icon name="ChevronRight" size={18} />
                 </Button>
@@ -359,7 +389,11 @@ export default function Index() {
                           <SelectValue placeholder="Выберите день" />
                         </SelectTrigger>
                         <SelectContent>
-                          {daysOfWeek.map(day => <SelectItem key={day} value={day}>{day}</SelectItem>)}
+                          {daysOfWeek.map(day => (
+                            <SelectItem key={day.name + day.date} value={`${day.name}, ${day.date}`}>
+                              {day.name}, {day.date}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -424,17 +458,18 @@ export default function Index() {
             <div className="overflow-x-auto pb-4">
               <div className="flex gap-4 min-w-max">
                 {daysOfWeek.map((day, dayIndex) => {
-                  const dayLessons = getScheduleByDay(day);
-                  const isWeekend = day.includes('25') || day.includes('26');
+                  const dayString = `${day.name}, ${day.date}`;
+                  const dayLessons = getScheduleByDay(dayString);
+                  const isWeekend = day.name === 'Суббота' || day.name === 'Воскресенье';
                   
                   return (
                     <Card
-                      key={day}
+                      key={day.name + day.date}
                       className={`w-72 flex-shrink-0 animate-slide-in ${isWeekend ? 'bg-muted/30' : ''}`}
                       style={{ animationDelay: `${dayIndex * 50}ms` }}
                     >
                       <CardHeader className={`pb-3 ${isWeekend ? 'bg-muted' : 'bg-primary text-primary-foreground'}`}>
-                        <CardTitle className="text-base font-semibold">{day}</CardTitle>
+                        <CardTitle className="text-base font-semibold">{day.name}, {day.date}</CardTitle>
                       </CardHeader>
                       <CardContent className="pt-4 space-y-3 max-h-[600px] overflow-y-auto">
                         {dayLessons.length === 0 ? (
