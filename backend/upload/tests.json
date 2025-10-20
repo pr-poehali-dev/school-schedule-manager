@@ -1,0 +1,10 @@
+{
+  "tests": [
+    {
+      "name": "Upload endpoint returns error for non-POST",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 405
+    }
+  ]
+}

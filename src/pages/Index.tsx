@@ -15,6 +15,7 @@ const API_URLS = {
   auth: 'https://functions.poehali.dev/8f8356cb-77bd-4e53-9217-92e528e4af8c',
   students: 'https://functions.poehali.dev/8ed4b769-d4cc-4ecb-8609-3af298dbbb7e',
   schedule: 'https://functions.poehali.dev/9f4b5d91-bb88-45d1-80b6-6344d8a2cff3',
+  upload: 'https://functions.poehali.dev/954bb42b-6cb1-4502-8f7b-e5da54c030d4',
 };
 
 type User = {
@@ -61,6 +62,8 @@ export default function Index() {
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [newLesson, setNewLesson] = useState<Partial<Lesson>>({});
   const [weekStartDate, setWeekStartDate] = useState(new Date());
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
+  const [uploadedFileUrls, setUploadedFileUrls] = useState<string[]>([]);
   const { toast } = useToast();
 
   const formatDate = (date: Date) => {
@@ -213,6 +216,50 @@ export default function Index() {
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось обновить урок', variant: 'destructive' });
+    }
+  };
+
+  const handleFileUpload = async (files: FileList | null, forEdit = false) => {
+    if (!files || files.length === 0) return;
+    
+    const fileArray = Array.from(files);
+    setUploadingFiles(fileArray);
+    
+    try {
+      const urls: string[] = [];
+      
+      for (const file of fileArray) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(API_URLS.upload, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          urls.push(data.url);
+        }
+      }
+      
+      setUploadedFileUrls(prev => [...prev, ...urls]);
+      
+      if (forEdit && editingLesson) {
+        const currentFiles = editingLesson.homework_files || '';
+        const newFiles = [...(currentFiles ? currentFiles.split(',').map(s => s.trim()) : []), ...urls].join(', ');
+        setEditingLesson({ ...editingLesson, homework_files: newFiles });
+      } else {
+        const currentFiles = newLesson.homework_files || '';
+        const newFiles = [...(currentFiles ? currentFiles.split(',').map(s => s.trim()) : []), ...urls].join(', ');
+        setNewLesson({ ...newLesson, homework_files: newFiles });
+      }
+      
+      toast({ title: 'Успех', description: `Загружено файлов: ${urls.length}` });
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось загрузить файлы', variant: 'destructive' });
+    } finally {
+      setUploadingFiles([]);
     }
   };
 
@@ -447,13 +494,32 @@ export default function Index() {
                       />
                     </div>
                     <div className="md:col-span-3">
-                      <Label>Файлы к домашнему заданию (ссылки через запятую)</Label>
-                      <Textarea
-                        value={newLesson.homework_files || ''}
-                        onChange={(e) => setNewLesson({ ...newLesson, homework_files: e.target.value })}
-                        placeholder="https://example.com/file1.pdf, https://example.com/file2.docx"
-                        rows={2}
-                      />
+                      <Label>Файлы к домашнему заданию</Label>
+                      <div className="flex gap-2 items-start">
+                        <Input
+                          type="file"
+                          multiple
+                          onChange={(e) => handleFileUpload(e.target.files)}
+                          className="flex-1"
+                          disabled={uploadingFiles.length > 0}
+                        />
+                        {uploadingFiles.length > 0 && (
+                          <div className="text-sm text-muted-foreground">
+                            Загрузка {uploadingFiles.length} файлов...
+                          </div>
+                        )}
+                      </div>
+                      {newLesson.homework_files && (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          <p className="font-medium mb-1">Прикрепленные файлы:</p>
+                          {newLesson.homework_files.split(',').map((url, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <Icon name="Paperclip" size={12} />
+                              <span className="truncate">{url.trim().split('/').pop()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <Button onClick={handleAddLesson} className="mt-4">
@@ -559,13 +625,32 @@ export default function Index() {
                                             />
                                           </div>
                                           <div>
-                                            <Label>Файлы к домашнему заданию (ссылки через запятую)</Label>
-                                            <Textarea
-                                              value={editingLesson.homework_files || ''}
-                                              onChange={(e) => setEditingLesson({ ...editingLesson, homework_files: e.target.value })}
-                                              placeholder="https://example.com/file1.pdf, https://example.com/file2.docx"
-                                              rows={2}
-                                            />
+                                            <Label>Файлы к домашнему заданию</Label>
+                                            <div className="flex gap-2 items-start">
+                                              <Input
+                                                type="file"
+                                                multiple
+                                                onChange={(e) => handleFileUpload(e.target.files, true)}
+                                                className="flex-1"
+                                                disabled={uploadingFiles.length > 0}
+                                              />
+                                              {uploadingFiles.length > 0 && (
+                                                <div className="text-sm text-muted-foreground">
+                                                  Загрузка...
+                                                </div>
+                                              )}
+                                            </div>
+                                            {editingLesson.homework_files && (
+                                              <div className="mt-2 text-xs text-muted-foreground">
+                                                <p className="font-medium mb-1">Прикрепленные файлы:</p>
+                                                {editingLesson.homework_files.split(',').map((url, idx) => (
+                                                  <div key={idx} className="flex items-center gap-2">
+                                                    <Icon name="Paperclip" size={12} />
+                                                    <span className="truncate">{url.trim().split('/').pop()}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
                                           </div>
                                           <Button onClick={handleUpdateLesson} className="w-full">
                                             Сохранить
