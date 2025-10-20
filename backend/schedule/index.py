@@ -164,6 +164,26 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'isBase64Encoded': False
         }
     
+    elif method == 'DELETE':
+        body_data = json.loads(event.get('body', '{}'))
+        lesson_id = body_data.get('id')
+        
+        cur.execute("DELETE FROM schedule WHERE id = %s", (lesson_id,))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({'message': 'Lesson deleted'}),
+            'isBase64Encoded': False
+        }
+    
     return {
         'statusCode': 405,
         'headers': {

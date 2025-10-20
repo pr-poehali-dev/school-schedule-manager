@@ -15,7 +15,6 @@ const API_URLS = {
   auth: 'https://functions.poehali.dev/8f8356cb-77bd-4e53-9217-92e528e4af8c',
   students: 'https://functions.poehali.dev/8ed4b769-d4cc-4ecb-8609-3af298dbbb7e',
   schedule: 'https://functions.poehali.dev/9f4b5d91-bb88-45d1-80b6-6344d8a2cff3',
-  upload: 'https://functions.poehali.dev/954bb42b-6cb1-4502-8f7b-e5da54c030d4',
 };
 
 type User = {
@@ -62,8 +61,7 @@ export default function Index() {
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [newLesson, setNewLesson] = useState<Partial<Lesson>>({});
   const [weekStartDate, setWeekStartDate] = useState(new Date());
-  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
-  const [uploadedFileUrls, setUploadedFileUrls] = useState<string[]>([]);
+
   const { toast } = useToast();
 
   const formatDate = (date: Date) => {
@@ -219,47 +217,20 @@ export default function Index() {
     }
   };
 
-  const handleFileUpload = async (files: FileList | null, forEdit = false) => {
-    if (!files || files.length === 0) return;
-    
-    const fileArray = Array.from(files);
-    setUploadingFiles(fileArray);
-    
+  const handleDeleteLesson = async (lessonId: number) => {
     try {
-      const urls: string[] = [];
+      const response = await fetch(API_URLS.schedule, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: lessonId }),
+      });
       
-      for (const file of fileArray) {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const response = await fetch(API_URLS.upload, {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          urls.push(data.url);
-        }
+      if (response.ok) {
+        toast({ title: 'Успех', description: 'Урок удалён' });
+        loadSchedule();
       }
-      
-      setUploadedFileUrls(prev => [...prev, ...urls]);
-      
-      if (forEdit && editingLesson) {
-        const currentFiles = editingLesson.homework_files || '';
-        const newFiles = [...(currentFiles ? currentFiles.split(',').map(s => s.trim()) : []), ...urls].join(', ');
-        setEditingLesson({ ...editingLesson, homework_files: newFiles });
-      } else {
-        const currentFiles = newLesson.homework_files || '';
-        const newFiles = [...(currentFiles ? currentFiles.split(',').map(s => s.trim()) : []), ...urls].join(', ');
-        setNewLesson({ ...newLesson, homework_files: newFiles });
-      }
-      
-      toast({ title: 'Успех', description: `Загружено файлов: ${urls.length}` });
     } catch (error) {
-      toast({ title: 'Ошибка', description: 'Не удалось загрузить файлы', variant: 'destructive' });
-    } finally {
-      setUploadingFiles([]);
+      toast({ title: 'Ошибка', description: 'Не удалось удалить урок', variant: 'destructive' });
     }
   };
 
@@ -358,7 +329,7 @@ export default function Index() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="schedule" className="w-full">
-          <TabsList className={`mb-6 grid w-full max-w-2xl mx-auto ${user.role === 'admin' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <TabsList className={`mb-6 grid w-full max-w-2xl mx-auto ${user.role === 'admin' ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <TabsTrigger value="schedule" className="flex items-center gap-2">
               <Icon name="CalendarDays" size={18} />
               Расписание
@@ -369,10 +340,6 @@ export default function Index() {
                 Ученики
               </TabsTrigger>
             )}
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
-              <Icon name="Bell" size={18} />
-              Уведомления
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="schedule" className="space-y-4">
@@ -494,32 +461,13 @@ export default function Index() {
                       />
                     </div>
                     <div className="md:col-span-3">
-                      <Label>Файлы к домашнему заданию</Label>
-                      <div className="flex gap-2 items-start">
-                        <Input
-                          type="file"
-                          multiple
-                          onChange={(e) => handleFileUpload(e.target.files)}
-                          className="flex-1"
-                          disabled={uploadingFiles.length > 0}
-                        />
-                        {uploadingFiles.length > 0 && (
-                          <div className="text-sm text-muted-foreground">
-                            Загрузка {uploadingFiles.length} файлов...
-                          </div>
-                        )}
-                      </div>
-                      {newLesson.homework_files && (
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          <p className="font-medium mb-1">Прикрепленные файлы:</p>
-                          {newLesson.homework_files.split(',').map((url, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <Icon name="Paperclip" size={12} />
-                              <span className="truncate">{url.trim().split('/').pop()}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <Label>Файлы к домашнему заданию (ссылки через запятую)</Label>
+                      <Textarea
+                        value={newLesson.homework_files || ''}
+                        onChange={(e) => setNewLesson({ ...newLesson, homework_files: e.target.value })}
+                        placeholder="https://example.com/file1.pdf, https://example.com/file2.docx"
+                        rows={2}
+                      />
                     </div>
                   </div>
                   <Button onClick={handleAddLesson} className="mt-4">
@@ -625,36 +573,33 @@ export default function Index() {
                                             />
                                           </div>
                                           <div>
-                                            <Label>Файлы к домашнему заданию</Label>
-                                            <div className="flex gap-2 items-start">
-                                              <Input
-                                                type="file"
-                                                multiple
-                                                onChange={(e) => handleFileUpload(e.target.files, true)}
-                                                className="flex-1"
-                                                disabled={uploadingFiles.length > 0}
-                                              />
-                                              {uploadingFiles.length > 0 && (
-                                                <div className="text-sm text-muted-foreground">
-                                                  Загрузка...
-                                                </div>
-                                              )}
-                                            </div>
-                                            {editingLesson.homework_files && (
-                                              <div className="mt-2 text-xs text-muted-foreground">
-                                                <p className="font-medium mb-1">Прикрепленные файлы:</p>
-                                                {editingLesson.homework_files.split(',').map((url, idx) => (
-                                                  <div key={idx} className="flex items-center gap-2">
-                                                    <Icon name="Paperclip" size={12} />
-                                                    <span className="truncate">{url.trim().split('/').pop()}</span>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            )}
+                                            <Label>Файлы к домашнему заданию (ссылки через запятую)</Label>
+                                            <Textarea
+                                              value={editingLesson.homework_files || ''}
+                                              onChange={(e) => setEditingLesson({ ...editingLesson, homework_files: e.target.value })}
+                                              placeholder="https://example.com/file1.pdf, https://example.com/file2.docx"
+                                              rows={2}
+                                            />
                                           </div>
-                                          <Button onClick={handleUpdateLesson} className="w-full">
-                                            Сохранить
-                                          </Button>
+                                          <div className="flex gap-2">
+                                            <Button onClick={handleUpdateLesson} className="flex-1">
+                                              <Icon name="Save" size={16} className="mr-2" />
+                                              Сохранить
+                                            </Button>
+                                            <Button 
+                                              onClick={() => {
+                                                if (confirm('Удалить этот урок?')) {
+                                                  handleDeleteLesson(editingLesson.id);
+                                                  setEditingLesson(null);
+                                                }
+                                              }} 
+                                              variant="destructive"
+                                              className="flex-1"
+                                            >
+                                              <Icon name="Trash2" size={16} className="mr-2" />
+                                              Удалить
+                                            </Button>
+                                          </div>
                                         </div>
                                       )}
                                     </DialogContent>
@@ -851,48 +796,6 @@ export default function Index() {
               </Card>
             </TabsContent>
           )}
-
-          <TabsContent value="notifications">
-            <Card className="animate-fade-in">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Icon name="Bell" size={20} />
-                  Уведомления
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Icon name="BookOpen" size={18} className="text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground">Новое домашнее задание</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        По математике добавлено задание: Упражнение 162
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-2">2 часа назад</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                      <Icon name="AlertCircle" size={18} className="text-accent" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground">Изменение в расписании</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Урок физкультуры в среду перенесён на 9:45
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-2">5 часов назад</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </main>
     </div>
