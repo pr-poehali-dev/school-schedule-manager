@@ -261,10 +261,6 @@ export default function Index() {
             <Button onClick={handleLogin} disabled={loading} className="w-full">
               {loading ? 'Вход...' : 'Войти'}
             </Button>
-            <div className="text-xs text-muted-foreground text-center p-3 bg-muted rounded">
-              Тестовый аккаунт администратора:<br />
-              Логин: <strong>22</strong> / Пароль: <strong>22</strong>
-            </div>
           </CardContent>
         </Card>
       </div>
