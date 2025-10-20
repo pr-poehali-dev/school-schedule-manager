@@ -61,6 +61,8 @@ export default function Index() {
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [newLesson, setNewLesson] = useState<Partial<Lesson>>({});
   const [weekStartDate, setWeekStartDate] = useState(new Date());
+  const [duplicatingLesson, setDuplicatingLesson] = useState<Lesson | null>(null);
+  const [targetDay, setTargetDay] = useState<string>('');
 
   const { toast } = useToast();
 
@@ -251,6 +253,40 @@ export default function Index() {
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось скопировать неделю', variant: 'destructive' });
+    }
+  };
+
+  const handleDuplicateLesson = async () => {
+    if (!duplicatingLesson || !targetDay) return;
+
+    try {
+      const lessonData = {
+        day_name: targetDay,
+        lesson_number: duplicatingLesson.lesson_number,
+        subject: duplicatingLesson.subject,
+        time_start: duplicatingLesson.time_start,
+        time_end: duplicatingLesson.time_end,
+        teacher: duplicatingLesson.teacher,
+        homework: duplicatingLesson.homework,
+        notes: duplicatingLesson.notes,
+        week_number: currentWeek,
+        homework_files: duplicatingLesson.homework_files,
+      };
+
+      const response = await fetch(API_URLS.schedule, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', ...lessonData }),
+      });
+
+      if (response.ok) {
+        toast({ title: 'Успех', description: 'Урок продублирован' });
+        loadSchedule();
+        setDuplicatingLesson(null);
+        setTargetDay('');
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось продублировать урок', variant: 'destructive' });
     }
   };
 
@@ -518,17 +554,67 @@ export default function Index() {
                                   </div>
                                 </div>
                                 {user.role === 'admin' && (
-                                  <Dialog>
-                                    <DialogTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-7 w-7 p-0"
-                                        onClick={() => setEditingLesson(lesson)}
-                                      >
-                                        <Icon name="Edit" size={14} />
-                                      </Button>
-                                    </DialogTrigger>
+                                  <div className="flex gap-1">
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 w-7 p-0"
+                                          onClick={() => {
+                                            setDuplicatingLesson(lesson);
+                                            setTargetDay('');
+                                          }}
+                                        >
+                                          <Icon name="Copy" size={14} />
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent>
+                                        <DialogHeader>
+                                          <DialogTitle>Дублировать урок</DialogTitle>
+                                        </DialogHeader>
+                                        {duplicatingLesson && (
+                                          <div className="space-y-4">
+                                            <div className="p-3 bg-muted/50 rounded-lg">
+                                              <p className="font-medium text-sm">{duplicatingLesson.subject}</p>
+                                              <p className="text-xs text-muted-foreground mt-1">
+                                                {duplicatingLesson.time_start} - {duplicatingLesson.time_end} • {duplicatingLesson.teacher}
+                                              </p>
+                                            </div>
+                                            <div>
+                                              <Label>Выберите день недели</Label>
+                                              <Select value={targetDay} onValueChange={setTargetDay}>
+                                                <SelectTrigger>
+                                                  <SelectValue placeholder="Выберите день" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  {daysOfWeek.map((day) => (
+                                                    <SelectItem key={day.name} value={day.name}>
+                                                      {day.name} ({day.date})
+                                                    </SelectItem>
+                                                  ))}
+                                                </SelectContent>
+                                              </Select>
+                                            </div>
+                                            <Button onClick={handleDuplicateLesson} disabled={!targetDay} className="w-full">
+                                              <Icon name="Copy" size={16} className="mr-2" />
+                                              Дублировать в {targetDay || '...'}
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </DialogContent>
+                                    </Dialog>
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 w-7 p-0"
+                                          onClick={() => setEditingLesson(lesson)}
+                                        >
+                                          <Icon name="Edit" size={14} />
+                                        </Button>
+                                      </DialogTrigger>
                                     <DialogContent>
                                       <DialogHeader>
                                         <DialogTitle>Редактировать урок</DialogTitle>
@@ -604,6 +690,7 @@ export default function Index() {
                                       )}
                                     </DialogContent>
                                   </Dialog>
+                                  </div>
                                 )}
                               </div>
                               <div className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
