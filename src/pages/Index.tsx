@@ -75,6 +75,15 @@ export default function Index() {
     return `${day} ${month}.`;
   };
 
+  const getWeekDateRange = (weekNum: number) => {
+    const startDate = new Date(weekStartDate);
+    const weekDiff = weekNum - currentWeek;
+    startDate.setDate(startDate.getDate() + (weekDiff * 7));
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 6);
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+  };
+
   const getDayOfWeek = (dayOffset: number) => {
     const days = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
     const date = new Date(weekStartDate);
@@ -440,7 +449,8 @@ export default function Index() {
                     </DialogHeader>
                     <div className="space-y-4">
                       <div className="p-3 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">Текущее расписание недели {currentWeek} будет скопировано в выбранную неделю</p>
+                        <p className="text-sm font-medium mb-1">Источник: Неделя {currentWeek}</p>
+                        <p className="text-xs text-muted-foreground">{getWeekDateRange(currentWeek)}</p>
                       </div>
                       <div>
                         <Label>Номер целевой недели (1-52)</Label>
@@ -452,6 +462,11 @@ export default function Index() {
                           onChange={(e) => setTargetWeek(e.target.value)}
                           placeholder="Введите номер недели"
                         />
+                        {targetWeek && parseInt(targetWeek) >= 1 && parseInt(targetWeek) <= 52 && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Цель: {getWeekDateRange(parseInt(targetWeek))}
+                          </p>
+                        )}
                       </div>
                       <Button onClick={handleDuplicateWeek} disabled={!targetWeek} className="w-full">
                         <Icon name="Copy" size={16} className="mr-2" />
