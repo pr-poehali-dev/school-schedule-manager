@@ -66,6 +66,7 @@ export default function Index() {
   const [targetWeek, setTargetWeek] = useState<string>('');
   const [showDuplicateWeekDialog, setShowDuplicateWeekDialog] = useState(false);
   const dayRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
 
   const { toast } = useToast();
 
@@ -571,33 +572,31 @@ export default function Index() {
               </Card>
             )}
 
-            <div className="overflow-x-auto pb-4">
-              <div className="flex gap-4 min-w-max">
-                {daysOfWeek.map((day, dayIndex) => {
-                  const dayString = `${day.name}, ${day.date}`;
-                  const dayLessons = getScheduleByDay(dayString);
-                  const isWeekend = day.name === 'Суббота' || day.name === 'Воскресенье';
-                  
-                  return (
-                    <Card
-                      key={day.name + day.date}
-                      ref={(el) => (dayRefs.current[dayIndex] = el)}
-                      className={`w-72 flex-shrink-0 animate-slide-in ${isWeekend ? 'bg-muted/30' : ''}`}
-                      style={{ animationDelay: `${dayIndex * 50}ms` }}
-                    >
-                      <CardHeader 
-                        className={`pb-3 cursor-pointer ${isWeekend ? 'bg-muted' : 'bg-primary text-primary-foreground'}`}
-                        onClick={() => {
-                          dayRefs.current[dayIndex]?.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'nearest',
-                            inline: 'center'
-                          });
-                        }}
+            {selectedDayIndex === null ? (
+              <div className="overflow-x-auto pb-4">
+                <div className="flex gap-4 min-w-max">
+                  {daysOfWeek.map((day, dayIndex) => {
+                    const dayString = `${day.name}, ${day.date}`;
+                    const dayLessons = getScheduleByDay(dayString);
+                    const isWeekend = day.name === 'Суббота' || day.name === 'Воскресенье';
+                    
+                    return (
+                      <Card
+                        key={day.name + day.date}
+                        ref={(el) => (dayRefs.current[dayIndex] = el)}
+                        className={`w-72 flex-shrink-0 animate-slide-in ${isWeekend ? 'bg-muted/30' : ''}`}
+                        style={{ animationDelay: `${dayIndex * 50}ms` }}
                       >
-                        <CardTitle className="text-base font-semibold">{day.name}, {day.date}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-4 space-y-3 max-h-[600px] overflow-y-auto">
+                        <CardHeader 
+                          className={`pb-3 cursor-pointer ${isWeekend ? 'bg-muted' : 'bg-primary text-primary-foreground'}`}
+                          onClick={() => setSelectedDayIndex(dayIndex)}
+                        >
+                          <CardTitle className="text-base font-semibold flex items-center justify-between">
+                            <span>{day.name}, {day.date}</span>
+                            <Icon name="Maximize2" size={16} />
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-4 space-y-3 max-h-[600px] overflow-y-auto">
                         {dayLessons.length === 0 ? (
                           <div className="text-center py-8 text-muted-foreground">
                             <Icon name="Calendar" size={32} className="mx-auto mb-2 opacity-50" />
@@ -803,6 +802,252 @@ export default function Index() {
                 })}
               </div>
             </div>
+            ) : (
+              <div className="animate-fade-in">
+                {(() => {
+                  const day = daysOfWeek[selectedDayIndex];
+                  const dayString = `${day.name}, ${day.date}`;
+                  const dayLessons = getScheduleByDay(dayString);
+                  const isWeekend = day.name === 'Суббота' || day.name === 'Воскресенье';
+                  
+                  return (
+                    <>
+                      <div className="flex items-center gap-3 mb-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedDayIndex(null)}
+                        >
+                          <Icon name="ArrowLeft" size={16} className="mr-2" />
+                          Вся неделя
+                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedDayIndex(Math.max(0, selectedDayIndex - 1))}
+                            disabled={selectedDayIndex === 0}
+                          >
+                            <Icon name="ChevronLeft" size={18} />
+                          </Button>
+                          <h2 className={`text-xl font-semibold px-4 py-2 rounded-lg ${isWeekend ? 'bg-muted' : 'bg-primary text-primary-foreground'}`}>
+                            {day.name}, {day.date}
+                          </h2>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedDayIndex(Math.min(6, selectedDayIndex + 1))}
+                            disabled={selectedDayIndex === 6}
+                          >
+                            <Icon name="ChevronRight" size={18} />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {dayLessons.length === 0 ? (
+                          <Card>
+                            <CardContent className="text-center py-16 text-muted-foreground">
+                              <Icon name="Calendar" size={48} className="mx-auto mb-4 opacity-50" />
+                              <p className="text-lg">{isWeekend ? 'Выходной день' : 'Нет уроков'}</p>
+                            </CardContent>
+                          </Card>
+                        ) : (
+                          dayLessons.map((lesson) => (
+                            <Card key={lesson.id} className="hover:shadow-lg transition-all">
+                              <CardContent className="p-6">
+                                <div className="flex justify-between items-start mb-4">
+                                  <div className="flex items-start gap-4 flex-1">
+                                    <Badge variant="outline" className="text-lg px-3 py-1">{lesson.lesson_number}</Badge>
+                                    <div className="flex-1">
+                                      <h3 className="text-2xl font-bold text-foreground mb-2">{lesson.subject}</h3>
+                                      <p className="text-muted-foreground flex items-center gap-2 mb-2">
+                                        <Icon name="Clock" size={16} />
+                                        {lesson.time_start} - {lesson.time_end}
+                                      </p>
+                                      <p className="text-muted-foreground flex items-center gap-2">
+                                        <Icon name="User" size={16} />
+                                        {lesson.teacher}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {user.role === 'admin' && (
+                                    <div className="flex gap-2">
+                                      <Dialog>
+                                        <DialogTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              setDuplicatingLesson(lesson);
+                                              setTargetDay('');
+                                            }}
+                                          >
+                                            <Icon name="Copy" size={16} className="mr-2" />
+                                            Дублировать
+                                          </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                          <DialogHeader>
+                                            <DialogTitle>Дублировать урок</DialogTitle>
+                                          </DialogHeader>
+                                          {duplicatingLesson && (
+                                            <div className="space-y-4">
+                                              <div className="p-3 bg-muted/50 rounded-lg">
+                                                <p className="font-medium text-sm">{duplicatingLesson.subject}</p>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                  {duplicatingLesson.time_start} - {duplicatingLesson.time_end} • {duplicatingLesson.teacher}
+                                                </p>
+                                              </div>
+                                              <div>
+                                                <Label>Выберите день недели</Label>
+                                                <Select value={targetDay} onValueChange={setTargetDay}>
+                                                  <SelectTrigger>
+                                                    <SelectValue placeholder="Выберите день" />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    {daysOfWeek.map((day) => (
+                                                      <SelectItem key={day.name} value={day.name}>
+                                                        {day.name} ({day.date})
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectContent>
+                                                </Select>
+                                              </div>
+                                              <Button onClick={handleDuplicateLesson} disabled={!targetDay} className="w-full">
+                                                <Icon name="Copy" size={16} className="mr-2" />
+                                                Дублировать в {targetDay || '...'}
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </DialogContent>
+                                      </Dialog>
+                                      <Dialog>
+                                        <DialogTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setEditingLesson(lesson)}
+                                          >
+                                            <Icon name="Edit" size={16} className="mr-2" />
+                                            Изменить
+                                          </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                          <DialogHeader>
+                                            <DialogTitle>Редактировать урок</DialogTitle>
+                                          </DialogHeader>
+                                          {editingLesson && (
+                                            <div className="space-y-4">
+                                              <div>
+                                                <Label>Предмет</Label>
+                                                <Input
+                                                  value={editingLesson.subject}
+                                                  onChange={(e) => setEditingLesson({ ...editingLesson, subject: e.target.value })}
+                                                />
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                  <Label>Начало</Label>
+                                                  <Input
+                                                    value={editingLesson.time_start}
+                                                    onChange={(e) => setEditingLesson({ ...editingLesson, time_start: e.target.value })}
+                                                  />
+                                                </div>
+                                                <div>
+                                                  <Label>Конец</Label>
+                                                  <Input
+                                                    value={editingLesson.time_end}
+                                                    onChange={(e) => setEditingLesson({ ...editingLesson, time_end: e.target.value })}
+                                                  />
+                                                </div>
+                                              </div>
+                                              <div>
+                                                <Label>Учитель</Label>
+                                                <Input
+                                                  value={editingLesson.teacher}
+                                                  onChange={(e) => setEditingLesson({ ...editingLesson, teacher: e.target.value })}
+                                                />
+                                              </div>
+                                              <div>
+                                                <Label>Домашнее задание</Label>
+                                                <Textarea
+                                                  value={editingLesson.homework || ''}
+                                                  onChange={(e) => setEditingLesson({ ...editingLesson, homework: e.target.value })}
+                                                  rows={3}
+                                                />
+                                              </div>
+                                              <div>
+                                                <Label>Заметки</Label>
+                                                <Textarea
+                                                  value={editingLesson.notes || ''}
+                                                  onChange={(e) => setEditingLesson({ ...editingLesson, notes: e.target.value })}
+                                                  rows={2}
+                                                />
+                                              </div>
+                                              <Button onClick={handleUpdateLesson} className="w-full">
+                                                <Icon name="Save" size={16} className="mr-2" />
+                                                Сохранить изменения
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </DialogContent>
+                                      </Dialog>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDeleteLesson(lesson.id)}
+                                      >
+                                        <Icon name="Trash2" size={16} />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                                {lesson.homework && (
+                                  <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                                    <p className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                                      <Icon name="BookOpen" size={16} />
+                                      Домашнее задание:
+                                    </p>
+                                    <p className="text-foreground whitespace-pre-wrap">{lesson.homework}</p>
+                                    {lesson.homework_files && (
+                                      <div className="mt-3 space-y-2">
+                                        {lesson.homework_files.split(',').map((fileUrl, idx) => {
+                                          const url = fileUrl.trim();
+                                          if (!url) return null;
+                                          const fileName = url.split('/').pop() || 'Файл';
+                                          return (
+                                            <a
+                                              key={idx}
+                                              href={url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex items-center gap-2 text-primary hover:underline"
+                                            >
+                                              <Icon name="Paperclip" size={14} />
+                                              {fileName}
+                                            </a>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                {lesson.notes && (
+                                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                                    <p className="text-sm text-muted-foreground">{lesson.notes}</p>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
           </TabsContent>
 
           {user.role === 'admin' && (
