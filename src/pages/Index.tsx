@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import jsPDF from 'jspdf';
 
 const API_URLS = {
   auth: 'https://functions.poehali.dev/8f8356cb-77bd-4e53-9217-92e528e4af8c',
@@ -247,6 +248,90 @@ export default function Index() {
     }
   };
 
+  const downloadWeekSchedulePDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text(`Raspisanie nedeli ${currentWeek}`, pageWidth / 2, 15, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(getWeekDateRange(currentWeek), pageWidth / 2, 22, { align: 'center' });
+    
+    let yPosition = 35;
+    const lineHeight = 7;
+    const margin = 15;
+    
+    daysOfWeek.forEach((day) => {
+      const dayLessons = schedule.filter(l => l.day_name === day.name);
+      
+      if (yPosition > 270) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(`${day.name} (${day.date})`, margin, yPosition);
+      yPosition += lineHeight;
+      
+      if (dayLessons.length === 0) {
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(9);
+        doc.setTextColor(128, 128, 128);
+        doc.text('Net urokov', margin + 5, yPosition);
+        doc.setTextColor(0, 0, 0);
+        yPosition += lineHeight + 3;
+      } else {
+        dayLessons.forEach((lesson) => {
+          if (yPosition > 270) {
+            doc.addPage();
+            yPosition = 20;
+          }
+          
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.text(`${lesson.time_start} - ${lesson.time_end}`, margin + 5, yPosition);
+          
+          doc.setFont('helvetica', 'normal');
+          doc.text(lesson.subject, margin + 40, yPosition);
+          yPosition += lineHeight;
+          
+          if (lesson.teacher) {
+            doc.setFontSize(8);
+            doc.setTextColor(80, 80, 80);
+            doc.text(`Uchitel: ${lesson.teacher}`, margin + 10, yPosition);
+            doc.setTextColor(0, 0, 0);
+            yPosition += 5;
+          }
+          
+          if (lesson.homework) {
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'italic');
+            const homeworkLines = doc.splitTextToSize(`DZ: ${lesson.homework}`, pageWidth - margin * 2 - 10);
+            homeworkLines.forEach((line: string) => {
+              if (yPosition > 270) {
+                doc.addPage();
+                yPosition = 20;
+              }
+              doc.text(line, margin + 10, yPosition);
+              yPosition += 5;
+            });
+          }
+          
+          yPosition += 3;
+        });
+      }
+      
+      yPosition += 5;
+    });
+    
+    doc.save(`raspisanie-nedelya-${currentWeek}.pdf`);
+    toast({ title: 'Готово!', description: 'PDF файл скачан' });
+  };
+
   const handleAddLesson = async () => {
     if (!newLesson.day_name || !newLesson.subject) return;
     
@@ -464,6 +549,10 @@ export default function Index() {
 
           <TabsContent value="schedule" className="space-y-4">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <Button onClick={downloadWeekSchedulePDF} variant="outline" size="sm">
+                <Icon name="Download" size={16} className="mr-2" />
+                Скачать расписание на неделю
+              </Button>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
