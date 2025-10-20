@@ -15,6 +15,7 @@ const API_URLS = {
   auth: 'https://functions.poehali.dev/8f8356cb-77bd-4e53-9217-92e528e4af8c',
   students: 'https://functions.poehali.dev/8ed4b769-d4cc-4ecb-8609-3af298dbbb7e',
   schedule: 'https://functions.poehali.dev/9f4b5d91-bb88-45d1-80b6-6344d8a2cff3',
+  teachers: 'https://functions.poehali.dev/55920796-7fb0-4b1b-bed5-7affcd3d6fd9',
 };
 
 type User = {
@@ -32,6 +33,15 @@ type Student = {
   parent_contact: string;
   notes: string;
   password?: string;
+};
+
+type Teacher = {
+  id: number;
+  full_name: string;
+  subject?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
 };
 
 type Lesson = {
@@ -53,6 +63,9 @@ export default function Index() {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [newTeacher, setNewTeacher] = useState<Partial<Teacher>>({});
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [schedule, setSchedule] = useState<Lesson[]>([]);
   const [currentWeek, setCurrentWeek] = useState(1);
@@ -103,8 +116,15 @@ export default function Index() {
     getDayOfWeek(6),
   ];
 
+  const fetchTeachers = async () => {
+    const res = await fetch(API_URLS.teachers);
+    const data = await res.json();
+    setTeachers(data.teachers || []);
+  };
+
   useEffect(() => {
     if (user) {
+      fetchTeachers();
       loadSchedule();
       if (user.role === 'admin') {
         loadStudents();
@@ -189,6 +209,41 @@ export default function Index() {
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось обновить данные', variant: 'destructive' });
+    }
+  };
+
+  const handleAddTeacher = async () => {
+    const res = await fetch(API_URLS.teachers, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newTeacher),
+    });
+    if (res.ok) {
+      setNewTeacher({});
+      fetchTeachers();
+      toast({ title: 'Учитель добавлен' });
+    }
+  };
+
+  const handleUpdateTeacher = async () => {
+    if (!editingTeacher) return;
+    const res = await fetch(API_URLS.teachers, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editingTeacher),
+    });
+    if (res.ok) {
+      setEditingTeacher(null);
+      fetchTeachers();
+      toast({ title: 'Учитель обновлён' });
+    }
+  };
+
+  const handleDeleteTeacher = async (id: number) => {
+    const res = await fetch(`${API_URLS.teachers}?id=${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      fetchTeachers();
+      toast({ title: 'Учитель удалён' });
     }
   };
 
@@ -388,16 +443,22 @@ export default function Index() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="schedule" className="w-full">
-          <TabsList className={`mb-6 grid w-full max-w-2xl mx-auto ${user.role === 'admin' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <TabsList className={`mb-6 grid w-full max-w-2xl mx-auto ${user.role === 'admin' ? 'grid-cols-3' : 'grid-cols-1'}`}>
             <TabsTrigger value="schedule" className="flex items-center gap-2">
               <Icon name="CalendarDays" size={18} />
               Расписание
             </TabsTrigger>
             {user.role === 'admin' && (
-              <TabsTrigger value="students" className="flex items-center gap-2">
-                <Icon name="Users" size={18} />
-                Ученики
-              </TabsTrigger>
+              <>
+                <TabsTrigger value="teachers" className="flex items-center gap-2">
+                  <Icon name="GraduationCap" size={18} />
+                  Учителя
+                </TabsTrigger>
+                <TabsTrigger value="students" className="flex items-center gap-2">
+                  <Icon name="Users" size={18} />
+                  Ученики
+                </TabsTrigger>
+              </>
             )}
           </TabsList>
 
@@ -540,11 +601,21 @@ export default function Index() {
                     </div>
                     <div>
                       <Label>Учитель</Label>
-                      <Input
-                        value={newLesson.teacher || ''}
-                        onChange={(e) => setNewLesson({ ...newLesson, teacher: e.target.value })}
-                        placeholder="Иванов И.И."
-                      />
+                      <Select 
+                        value={newLesson.teacher || ''} 
+                        onValueChange={(val) => setNewLesson({ ...newLesson, teacher: val })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Выберите учителя" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teachers.map(teacher => (
+                            <SelectItem key={teacher.id} value={teacher.full_name}>
+                              {teacher.full_name} {teacher.subject ? `(${teacher.subject})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="md:col-span-3">
                       <Label>Домашнее задание</Label>
@@ -964,10 +1035,21 @@ export default function Index() {
                                               </div>
                                               <div>
                                                 <Label>Учитель</Label>
-                                                <Input
-                                                  value={editingLesson.teacher}
-                                                  onChange={(e) => setEditingLesson({ ...editingLesson, teacher: e.target.value })}
-                                                />
+                                                <Select 
+                                                  value={editingLesson.teacher} 
+                                                  onValueChange={(val) => setEditingLesson({ ...editingLesson, teacher: val })}
+                                                >
+                                                  <SelectTrigger>
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    {teachers.map(teacher => (
+                                                      <SelectItem key={teacher.id} value={teacher.full_name}>
+                                                        {teacher.full_name} {teacher.subject ? `(${teacher.subject})` : ''}
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectContent>
+                                                </Select>
                                               </div>
                                               <div>
                                                 <Label>Домашнее задание</Label>
@@ -1051,14 +1133,177 @@ export default function Index() {
           </TabsContent>
 
           {user.role === 'admin' && (
-            <TabsContent value="students">
-              <Card className="animate-fade-in">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Icon name="Users" size={20} />
-                    Управление учениками
-                  </CardTitle>
-                </CardHeader>
+            <>
+              <TabsContent value="teachers">
+                <Card className="animate-fade-in">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Icon name="GraduationCap" size={20} />
+                      Управление учителями
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="border rounded-lg p-4 bg-muted/20">
+                      <h3 className="font-semibold mb-3">Добавить учителя</h3>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div>
+                          <Label>ФИО</Label>
+                          <Input
+                            value={newTeacher.full_name || ''}
+                            onChange={(e) => setNewTeacher({ ...newTeacher, full_name: e.target.value })}
+                            placeholder="Иванова Мария Петровна"
+                          />
+                        </div>
+                        <div>
+                          <Label>Предмет</Label>
+                          <Input
+                            value={newTeacher.subject || ''}
+                            onChange={(e) => setNewTeacher({ ...newTeacher, subject: e.target.value })}
+                            placeholder="Математика"
+                          />
+                        </div>
+                        <div>
+                          <Label>Телефон</Label>
+                          <Input
+                            value={newTeacher.phone || ''}
+                            onChange={(e) => setNewTeacher({ ...newTeacher, phone: e.target.value })}
+                            placeholder="+7 (999) 123-45-67"
+                          />
+                        </div>
+                        <div>
+                          <Label>Email</Label>
+                          <Input
+                            type="email"
+                            value={newTeacher.email || ''}
+                            onChange={(e) => setNewTeacher({ ...newTeacher, email: e.target.value })}
+                            placeholder="teacher@school.ru"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label>Заметки</Label>
+                          <Textarea
+                            value={newTeacher.notes || ''}
+                            onChange={(e) => setNewTeacher({ ...newTeacher, notes: e.target.value })}
+                            placeholder="Дополнительная информация"
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                      <Button onClick={handleAddTeacher} className="mt-3">
+                        <Icon name="Plus" size={16} className="mr-2" />
+                        Добавить учителя
+                      </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h3 className="font-semibold">Список учителей ({teachers.length})</h3>
+                      {teachers.map((teacher) => (
+                        <div key={teacher.id} className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <p className="font-semibold">{teacher.full_name}</p>
+                              {teacher.subject && (
+                                <p className="text-sm text-muted-foreground mt-1">Предмет: {teacher.subject}</p>
+                              )}
+                              <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                                {teacher.phone && <span>{teacher.phone}</span>}
+                                {teacher.email && <span>{teacher.email}</span>}
+                              </div>
+                              {teacher.notes && (
+                                <p className="text-xs text-muted-foreground mt-2">{teacher.notes}</p>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setEditingTeacher(teacher)}
+                                  >
+                                    <Icon name="Edit" size={16} />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Редактировать учителя</DialogTitle>
+                                  </DialogHeader>
+                                  {editingTeacher && (
+                                    <div className="space-y-4">
+                                      <div>
+                                        <Label>ФИО</Label>
+                                        <Input
+                                          value={editingTeacher.full_name}
+                                          onChange={(e) => setEditingTeacher({ ...editingTeacher, full_name: e.target.value })}
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label>Предмет</Label>
+                                        <Input
+                                          value={editingTeacher.subject || ''}
+                                          onChange={(e) => setEditingTeacher({ ...editingTeacher, subject: e.target.value })}
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label>Телефон</Label>
+                                        <Input
+                                          value={editingTeacher.phone || ''}
+                                          onChange={(e) => setEditingTeacher({ ...editingTeacher, phone: e.target.value })}
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label>Email</Label>
+                                        <Input
+                                          value={editingTeacher.email || ''}
+                                          onChange={(e) => setEditingTeacher({ ...editingTeacher, email: e.target.value })}
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label>Заметки</Label>
+                                        <Textarea
+                                          value={editingTeacher.notes || ''}
+                                          onChange={(e) => setEditingTeacher({ ...editingTeacher, notes: e.target.value })}
+                                          rows={2}
+                                        />
+                                      </div>
+                                      <Button onClick={handleUpdateTeacher} className="w-full">
+                                        <Icon name="Save" size={16} className="mr-2" />
+                                        Сохранить
+                                      </Button>
+                                    </div>
+                                  )}
+                                </DialogContent>
+                              </Dialog>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteTeacher(teacher.id)}
+                              >
+                                <Icon name="Trash2" size={16} />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {teachers.length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Icon name="GraduationCap" size={32} className="mx-auto mb-2 opacity-50" />
+                          <p>Нет учителей</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="students">
+                <Card className="animate-fade-in">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Icon name="Users" size={20} />
+                      Управление учениками
+                    </CardTitle>
+                  </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="border rounded-lg p-4 bg-muted/20">
                     <h3 className="font-semibold mb-3">Добавить ученика</h3>
@@ -1194,6 +1439,7 @@ export default function Index() {
                 </CardContent>
               </Card>
             </TabsContent>
+            </>
           )}
         </Tabs>
       </main>
