@@ -423,7 +423,7 @@ export default function Index() {
               <Icon name="Calendar" className="text-primary-foreground" size={24} />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Школьное расписание</h1>
+              <h1 className="text-xl font-bold text-foreground">Школьное расписание: "МБОУ Лицей №22"</h1>
               <p className="text-sm text-muted-foreground">{user.full_name}</p>
             </div>
           </div>
