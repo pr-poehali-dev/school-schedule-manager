@@ -497,48 +497,6 @@ export default function Index() {
                   <Icon name="ChevronRight" size={18} />
                 </Button>
               </div>
-              
-              {user.role === 'admin' && (
-                <Dialog open={showDuplicateWeekDialog} onOpenChange={setShowDuplicateWeekDialog}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Icon name="Copy" size={16} className="mr-2" />
-                      Дублировать неделю
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Копировать расписание недели {currentWeek}</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="p-3 bg-muted/50 rounded-lg">
-                        <p className="text-sm font-medium mb-1">Источник: Неделя {currentWeek}</p>
-                        <p className="text-xs text-muted-foreground">{getWeekDateRange(currentWeek)}</p>
-                      </div>
-                      <div>
-                        <Label>Номер целевой недели (1-52)</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          max="52"
-                          value={targetWeek}
-                          onChange={(e) => setTargetWeek(e.target.value)}
-                          placeholder="Введите номер недели"
-                        />
-                        {targetWeek && parseInt(targetWeek) >= 1 && parseInt(targetWeek) <= 52 && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Цель: {getWeekDateRange(parseInt(targetWeek))}
-                          </p>
-                        )}
-                      </div>
-                      <Button onClick={handleDuplicateWeek} disabled={!targetWeek} className="w-full">
-                        <Icon name="Copy" size={16} className="mr-2" />
-                        Скопировать в неделю {targetWeek || '...'}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              )}
             </div>
 
             {user.role === 'admin' && (
