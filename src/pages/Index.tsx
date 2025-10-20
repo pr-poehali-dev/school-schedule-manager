@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -65,6 +65,7 @@ export default function Index() {
   const [targetDay, setTargetDay] = useState<string>('');
   const [targetWeek, setTargetWeek] = useState<string>('');
   const [showDuplicateWeekDialog, setShowDuplicateWeekDialog] = useState(false);
+  const dayRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const { toast } = useToast();
 
@@ -580,10 +581,20 @@ export default function Index() {
                   return (
                     <Card
                       key={day.name + day.date}
+                      ref={(el) => (dayRefs.current[dayIndex] = el)}
                       className={`w-72 flex-shrink-0 animate-slide-in ${isWeekend ? 'bg-muted/30' : ''}`}
                       style={{ animationDelay: `${dayIndex * 50}ms` }}
                     >
-                      <CardHeader className={`pb-3 ${isWeekend ? 'bg-muted' : 'bg-primary text-primary-foreground'}`}>
+                      <CardHeader 
+                        className={`pb-3 cursor-pointer ${isWeekend ? 'bg-muted' : 'bg-primary text-primary-foreground'}`}
+                        onClick={() => {
+                          dayRefs.current[dayIndex]?.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'nearest',
+                            inline: 'center'
+                          });
+                        }}
+                      >
                         <CardTitle className="text-base font-semibold">{day.name}, {day.date}</CardTitle>
                       </CardHeader>
                       <CardContent className="pt-4 space-y-3 max-h-[600px] overflow-y-auto">
