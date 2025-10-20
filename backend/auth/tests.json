@@ -1,0 +1,33 @@
+{
+  "tests": [
+    {
+      "name": "Test admin login",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "login": "22",
+        "password": "22"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "id": 1,
+        "role": "admin"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Test invalid login",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "login": "wrong",
+        "password": "wrong"
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
