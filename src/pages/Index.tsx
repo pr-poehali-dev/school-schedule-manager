@@ -63,6 +63,8 @@ export default function Index() {
   const [weekStartDate, setWeekStartDate] = useState(new Date());
   const [duplicatingLesson, setDuplicatingLesson] = useState<Lesson | null>(null);
   const [targetDay, setTargetDay] = useState<string>('');
+  const [targetWeek, setTargetWeek] = useState<string>('');
+  const [showDuplicateWeekDialog, setShowDuplicateWeekDialog] = useState(false);
 
   const { toast } = useToast();
 
@@ -237,6 +239,14 @@ export default function Index() {
   };
 
   const handleDuplicateWeek = async () => {
+    if (!targetWeek) return;
+
+    const targetWeekNum = parseInt(targetWeek);
+    if (isNaN(targetWeekNum) || targetWeekNum < 1 || targetWeekNum > 52) {
+      toast({ title: 'Ошибка', description: 'Укажите номер недели от 1 до 52', variant: 'destructive' });
+      return;
+    }
+
     try {
       const response = await fetch(API_URLS.schedule, {
         method: 'POST',
@@ -244,12 +254,14 @@ export default function Index() {
         body: JSON.stringify({
           action: 'duplicate_week',
           source_week: currentWeek,
-          target_week: currentWeek + 1,
+          target_week: targetWeekNum,
         }),
       });
       
       if (response.ok) {
-        toast({ title: 'Успех', description: `Неделя ${currentWeek} скопирована в неделю ${currentWeek + 1}` });
+        toast({ title: 'Успех', description: `Неделя ${currentWeek} скопирована в неделю ${targetWeekNum}` });
+        setShowDuplicateWeekDialog(false);
+        setTargetWeek('');
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось скопировать неделю', variant: 'destructive' });
@@ -415,10 +427,39 @@ export default function Index() {
               </div>
               
               {user.role === 'admin' && (
-                <Button onClick={handleDuplicateWeek} variant="outline" size="sm">
-                  <Icon name="Copy" size={16} className="mr-2" />
-                  Дублировать неделю
-                </Button>
+                <Dialog open={showDuplicateWeekDialog} onOpenChange={setShowDuplicateWeekDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Icon name="Copy" size={16} className="mr-2" />
+                      Дублировать неделю
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Копировать расписание недели {currentWeek}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="p-3 bg-muted/50 rounded-lg">
+                        <p className="text-sm text-muted-foreground">Текущее расписание недели {currentWeek} будет скопировано в выбранную неделю</p>
+                      </div>
+                      <div>
+                        <Label>Номер целевой недели (1-52)</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="52"
+                          value={targetWeek}
+                          onChange={(e) => setTargetWeek(e.target.value)}
+                          placeholder="Введите номер недели"
+                        />
+                      </div>
+                      <Button onClick={handleDuplicateWeek} disabled={!targetWeek} className="w-full">
+                        <Icon name="Copy" size={16} className="mr-2" />
+                        Скопировать в неделю {targetWeek || '...'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               )}
             </div>
 
