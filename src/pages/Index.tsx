@@ -380,7 +380,7 @@ export default function Index() {
             <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Icon name="GraduationCap" className="text-primary-foreground" size={32} />
             </div>
-            <CardTitle className="text-2xl">Школьное расписание</CardTitle>
+            <CardTitle className="text-2xl">Школьное расписание: "МБОУ Лицей №22"</CardTitle>
             <p className="text-muted-foreground">Войдите в систему</p>
           </CardHeader>
           <CardContent className="space-y-4">
