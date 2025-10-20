@@ -45,7 +45,7 @@ type Lesson = {
   homework?: string;
   notes?: string;
   week_number: number;
-  files: Array<{ id: number; file_name: string; file_url: string }>;
+  homework_files?: string;
 };
 
 export default function Index() {
@@ -446,6 +446,15 @@ export default function Index() {
                         placeholder="Упражнение 45, стр. 120"
                       />
                     </div>
+                    <div className="md:col-span-3">
+                      <Label>Файлы к домашнему заданию (ссылки через запятую)</Label>
+                      <Textarea
+                        value={newLesson.homework_files || ''}
+                        onChange={(e) => setNewLesson({ ...newLesson, homework_files: e.target.value })}
+                        placeholder="https://example.com/file1.pdf, https://example.com/file2.docx"
+                        rows={2}
+                      />
+                    </div>
                   </div>
                   <Button onClick={handleAddLesson} className="mt-4">
                     <Icon name="Plus" size={18} className="mr-2" />
@@ -549,6 +558,15 @@ export default function Index() {
                                               onChange={(e) => setEditingLesson({ ...editingLesson, homework: e.target.value })}
                                             />
                                           </div>
+                                          <div>
+                                            <Label>Файлы к домашнему заданию (ссылки через запятую)</Label>
+                                            <Textarea
+                                              value={editingLesson.homework_files || ''}
+                                              onChange={(e) => setEditingLesson({ ...editingLesson, homework_files: e.target.value })}
+                                              placeholder="https://example.com/file1.pdf, https://example.com/file2.docx"
+                                              rows={2}
+                                            />
+                                          </div>
                                           <Button onClick={handleUpdateLesson} className="w-full">
                                             Сохранить
                                           </Button>
@@ -569,22 +587,27 @@ export default function Index() {
                                     Домашнее задание:
                                   </p>
                                   <p className="text-muted-foreground">{lesson.homework}</p>
-                                </div>
-                              )}
-                              {lesson.files && lesson.files.length > 0 && (
-                                <div className="mt-2 space-y-1">
-                                  {lesson.files.map((file) => (
-                                    <a
-                                      key={file.id}
-                                      href={file.file_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-2 text-xs text-primary hover:underline"
-                                    >
-                                      <Icon name="Paperclip" size={12} />
-                                      {file.file_name}
-                                    </a>
-                                  ))}
+                                  {lesson.homework_files && (
+                                    <div className="mt-2 space-y-1">
+                                      {lesson.homework_files.split(',').map((fileUrl, idx) => {
+                                        const url = fileUrl.trim();
+                                        if (!url) return null;
+                                        const fileName = url.split('/').pop() || 'Файл';
+                                        return (
+                                          <a
+                                            key={idx}
+                                            href={url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 text-primary hover:underline"
+                                          >
+                                            <Icon name="Paperclip" size={12} />
+                                            {fileName}
+                                          </a>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

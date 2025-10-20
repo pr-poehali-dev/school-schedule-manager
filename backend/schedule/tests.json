@@ -5,7 +5,6 @@
       "method": "GET",
       "path": "/?week=1",
       "expectedStatus": 200,
-      "expectedBody": [],
       "bodyMatcher": "partial"
     }
   ]

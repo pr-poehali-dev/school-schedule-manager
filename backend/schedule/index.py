@@ -33,14 +33,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         cur.execute("""
             SELECT s.id, s.day_name, s.lesson_number, s.subject, s.time_start, s.time_end,
-                   s.teacher, s.homework, s.notes, s.week_number,
-                   COALESCE(json_agg(
-                       json_build_object('id', lf.id, 'file_name', lf.file_name, 'file_url', lf.file_url)
-                   ) FILTER (WHERE lf.id IS NOT NULL), '[]') as files
+                   s.teacher, s.homework, s.notes, s.week_number, s.homework_files
             FROM schedule s
-            LEFT JOIN lesson_files lf ON s.id = lf.schedule_id
             WHERE s.week_number = %s
-            GROUP BY s.id, s.day_name, s.lesson_number
             ORDER BY s.lesson_number
         """, (week_number,))
         
@@ -59,7 +54,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'homework': lesson[7] or '',
                 'notes': lesson[8] or '',
                 'week_number': lesson[9],
-                'files': json.loads(lesson[10]) if isinstance(lesson[10], str) else lesson[10]
+                'homework_files': lesson[10] or ''
             })
         
         cur.close()
@@ -114,12 +109,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             homework = body_data.get('homework', '')
             notes = body_data.get('notes', '')
             week_number = body_data.get('week_number', 1)
+            homework_files = body_data.get('homework_files', '')
             
             cur.execute("""
-                INSERT INTO schedule (day_name, lesson_number, subject, time_start, time_end, teacher, homework, notes, week_number)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO schedule (day_name, lesson_number, subject, time_start, time_end, teacher, homework, notes, week_number, homework_files)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
-            """, (day_name, lesson_number, subject, time_start, time_end, teacher, homework, notes, week_number))
+            """, (day_name, lesson_number, subject, time_start, time_end, teacher, homework, notes, week_number, homework_files))
             
             lesson_id = cur.fetchone()[0]
             
@@ -146,12 +142,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         teacher = body_data.get('teacher')
         homework = body_data.get('homework', '')
         notes = body_data.get('notes', '')
+        homework_files = body_data.get('homework_files', '')
         
         cur.execute("""
             UPDATE schedule
-            SET subject = %s, time_start = %s, time_end = %s, teacher = %s, homework = %s, notes = %s
+            SET subject = %s, time_start = %s, time_end = %s, teacher = %s, homework = %s, notes = %s, homework_files = %s
             WHERE id = %s
-        """, (subject, time_start, time_end, teacher, homework, notes, lesson_id))
+        """, (subject, time_start, time_end, teacher, homework, notes, homework_files, lesson_id))
         
         conn.commit()
         cur.close()
