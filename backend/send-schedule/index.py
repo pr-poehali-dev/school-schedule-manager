@@ -37,19 +37,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     body_data = json.loads(event.get('body', '{}'))
     recipient_email: str = body_data.get('email', '')
-    from_email: str = body_data.get('fromEmail', '')
     schedule_data: list = body_data.get('schedule', [])
     week_number: int = body_data.get('week', 1)
     week_dates: str = body_data.get('weekDates', '')
     
-    if not recipient_email or not schedule_data or not from_email:
+    if not recipient_email or not schedule_data:
         return {
             'statusCode': 400,
             'headers': {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            'body': json.dumps({'error': 'Email, fromEmail and schedule are required'})
+            'body': json.dumps({'error': 'Email and schedule are required'})
         }
     
     days_order = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
@@ -113,7 +112,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     try:
         api_key = os.environ.get('SENDGRID_API_KEY')
-        
         if not api_key:
             return {
                 'statusCode': 500,
@@ -125,7 +123,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             }
         
         message = Mail(
-            from_email=from_email,
+            from_email='noreply@poehali.dev',
             to_emails=recipient_email,
             subject=f'Расписание уроков - Неделя {week_number}',
             html_content=html_content

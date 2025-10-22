@@ -1,15 +1,28 @@
 {
   "tests": [
     {
-      "name": "Validate required fields",
+      "name": "Send schedule email",
       "method": "POST",
       "path": "/",
       "body": {
-        "email": "test@example.com"
+        "email": "test@example.com",
+        "week": 1,
+        "weekDates": "1 янв. - 7 янв.",
+        "schedule": [
+          {
+            "day_name": "Понедельник",
+            "lesson_number": 1,
+            "subject": "Математика",
+            "time_start": "08:00",
+            "time_end": "08:45",
+            "teacher": "Иванов И.И.",
+            "homework": "Стр. 12, задачи 1-5"
+          }
+        ]
       },
-      "expectedStatus": 400,
+      "expectedStatus": 200,
       "expectedBody": {
-        "error": "Email, fromEmail and schedule are required"
+        "success": true
       },
       "bodyMatcher": "partial"
     }
