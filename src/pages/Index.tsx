@@ -10,13 +10,13 @@ import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import jsPDF from 'jspdf';
 
 const API_URLS = {
   auth: 'https://functions.poehali.dev/8f8356cb-77bd-4e53-9217-92e528e4af8c',
   students: 'https://functions.poehali.dev/8ed4b769-d4cc-4ecb-8609-3af298dbbb7e',
   schedule: 'https://functions.poehali.dev/9f4b5d91-bb88-45d1-80b6-6344d8a2cff3',
   teachers: 'https://functions.poehali.dev/55920796-7fb0-4b1b-bed5-7affcd3d6fd9',
-  sendSchedule: 'https://functions.poehali.dev/aa3e0fe6-0f4e-4ea7-b17a-91bbcfe499e0',
 };
 
 type User = {
@@ -81,10 +81,6 @@ export default function Index() {
   const [showDuplicateWeekDialog, setShowDuplicateWeekDialog] = useState(false);
   const dayRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
-  const [showEmailDialog, setShowEmailDialog] = useState(false);
-  const [recipientEmail, setRecipientEmail] = useState('');
-  const [fromEmail, setFromEmail] = useState('');
-  const [sendingEmail, setSendingEmail] = useState(false);
 
   const { toast } = useToast();
 
@@ -252,6 +248,90 @@ export default function Index() {
     }
   };
 
+  const downloadWeekSchedulePDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text(`Raspisanie nedeli ${currentWeek}`, pageWidth / 2, 15, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(getWeekDateRange(currentWeek), pageWidth / 2, 22, { align: 'center' });
+    
+    let yPosition = 35;
+    const lineHeight = 7;
+    const margin = 15;
+    
+    daysOfWeek.forEach((day) => {
+      const dayLessons = schedule.filter(l => l.day_name === day.name);
+      
+      if (yPosition > 270) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(`${day.name} (${day.date})`, margin, yPosition);
+      yPosition += lineHeight;
+      
+      if (dayLessons.length === 0) {
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(9);
+        doc.setTextColor(128, 128, 128);
+        doc.text('Net urokov', margin + 5, yPosition);
+        doc.setTextColor(0, 0, 0);
+        yPosition += lineHeight + 3;
+      } else {
+        dayLessons.forEach((lesson) => {
+          if (yPosition > 270) {
+            doc.addPage();
+            yPosition = 20;
+          }
+          
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.text(`${lesson.time_start} - ${lesson.time_end}`, margin + 5, yPosition);
+          
+          doc.setFont('helvetica', 'normal');
+          doc.text(lesson.subject, margin + 40, yPosition);
+          yPosition += lineHeight;
+          
+          if (lesson.teacher) {
+            doc.setFontSize(8);
+            doc.setTextColor(80, 80, 80);
+            doc.text(`Uchitel: ${lesson.teacher}`, margin + 10, yPosition);
+            doc.setTextColor(0, 0, 0);
+            yPosition += 5;
+          }
+          
+          if (lesson.homework) {
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'italic');
+            const homeworkLines = doc.splitTextToSize(`DZ: ${lesson.homework}`, pageWidth - margin * 2 - 10);
+            homeworkLines.forEach((line: string) => {
+              if (yPosition > 270) {
+                doc.addPage();
+                yPosition = 20;
+              }
+              doc.text(line, margin + 10, yPosition);
+              yPosition += 5;
+            });
+          }
+          
+          yPosition += 3;
+        });
+      }
+      
+      yPosition += 5;
+    });
+    
+    doc.save(`raspisanie-nedelya-${currentWeek}.pdf`);
+    toast({ title: 'Готово!', description: 'PDF файл скачан' });
+  };
+
   const handleAddLesson = async () => {
     if (!newLesson.day_name || !newLesson.subject) return;
     
@@ -377,41 +457,6 @@ export default function Index() {
     return schedule.filter(lesson => lesson.day_name === dayName).sort((a, b) => a.lesson_number - b.lesson_number);
   };
 
-  const handleSendEmail = async () => {
-    if (!recipientEmail || !fromEmail) {
-      toast({ title: 'Ошибка', description: 'Заполните все поля', variant: 'destructive' });
-      return;
-    }
-
-    setSendingEmail(true);
-    try {
-      const response = await fetch(API_URLS.sendSchedule, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: recipientEmail,
-          fromEmail: fromEmail,
-          schedule: schedule,
-          week: currentWeek,
-          weekDates: getWeekDateRange(currentWeek),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast({ title: 'Готово!', description: `Расписание отправлено на ${recipientEmail}` });
-        setShowEmailDialog(false);
-        setRecipientEmail('');
-      } else {
-        toast({ title: 'Ошибка', description: data.error || 'Не удалось отправить email', variant: 'destructive' });
-      }
-    } catch (error) {
-      toast({ title: 'Ошибка', description: 'Не удалось отправить email', variant: 'destructive' });
-    }
-    setSendingEmail(false);
-  };
-
   if (!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -504,6 +549,10 @@ export default function Index() {
 
           <TabsContent value="schedule" className="space-y-4">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <Button onClick={downloadWeekSchedulePDF} variant="outline" size="sm">
+                <Icon name="Download" size={16} className="mr-2" />
+                Скачать расписание на неделю
+              </Button>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -537,50 +586,6 @@ export default function Index() {
                   <Icon name="ChevronRight" size={18} />
                 </Button>
               </div>
-              
-              <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Icon name="Mail" size={18} className="mr-2" />
-                    Отправить на email
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Отправить расписание на email</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 mt-4">
-                    <div>
-                      <Label>Email получателя</Label>
-                      <Input
-                        type="email"
-                        placeholder="student@example.com"
-                        value={recipientEmail}
-                        onChange={(e) => setRecipientEmail(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label>Ваш email (проверенный в SendGrid)</Label>
-                      <Input
-                        type="email"
-                        placeholder="your-email@gmail.com"
-                        value={fromEmail}
-                        onChange={(e) => setFromEmail(e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Должен быть подтвержден в SendGrid
-                      </p>
-                    </div>
-                    <Button 
-                      onClick={handleSendEmail} 
-                      disabled={sendingEmail}
-                      className="w-full"
-                    >
-                      {sendingEmail ? 'Отправка...' : 'Отправить'}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
             </div>
 
             {user.role === 'admin' && (
